@@ -1,0 +1,5 @@
+outs:
+- md5: f7e6e967a85b6c134632666c3eaddf12
+  size: 666871308
+  hash: md5
+  path: ensemble_model.pkl

@@ -1,1 +1,4 @@
 data/preprocessing/DataCo_Enriched_Master.csv
+models/*.pkl
+models/*.joblib
+*.pkl
