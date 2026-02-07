@@ -1,0 +1,46 @@
+{
+  "test_accuracy": 1.0,
+  "test_auc": 1.0,
+  "val_best_threshold": 0.5520100502512563,
+  "val_best_f1": 0.9999999999995,
+  "confusion_matrix": [
+    [
+      16309,
+      0
+    ],
+    [
+      0,
+      19795
+    ]
+  ],
+  "classification_report": {
+    "0": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 16309.0
+    },
+    "1": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 19795.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 36104.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 36104.0
+    }
+  },
+  "n_train": 108311,
+  "n_val": 36104,
+  "n_test": 36104
+}
