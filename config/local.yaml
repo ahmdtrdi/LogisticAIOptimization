@@ -8,13 +8,15 @@ paths:
 
 data:
   main_csv: DataCoSupplyChainDataset.csv
+
+  # (optional, if you later enrich features)
   fuel_csv: Global_Fuel_Prices_Database.csv
   lpi_csv: LPI_2014-2018.csv
 
 schema:
-   date_col: "order date (DateOrders)"
-   id_col: "Order Id"
-   target_col: "is_late"
+  date_col: "order date (DateOrders)"
+  id_col: "Order Id"
+  target_col: "is_late"
 
 features:
   lat_col: Latitude
@@ -22,14 +24,68 @@ features:
   wh_lat: 37.3382
   wh_lon: -121.8863
   peak_months: [11, 12]
-  sla_col: Days for shipment (scheduled)
+  sla_col: "Days for shipment (scheduled)"
   fast_sla_threshold: 2
+
+  leakage_cols:
+    - "Days for shipping (real)"
+    - "delivery_gap"
+    - "Delivery Status"
+    - "Late_delivery_risk"
+
+  final_drops:
+    # Leakage / future info
+    - "Benefit per order"
+    - "Order Item Profit Ratio"
+    - "Order Profit Per Order"
+    - "shipping date (DateOrders)"
+    - "Order Status"
+
+    # Redundant / duplicates
+    - "Sales per customer"
+    - "Order Item Total"
+
+    # IDs (drop from training, keep for metadata only)
+    - "Order CardId"
+    - "Order Customer Id"
+    - "Order Id"
+    - "Order Item Id"
+    - "Category Id"
+    - "Department Id"
+    - "Order Item Cardprod Id"
+    - "Product Category Id"
+    - "Product Card Id"
+    - "Product Image"
+    - "Original_Year"
+
+  drop_if_all_missing:
+    - "Product Description"
 
 train:
   random_seed: 42
   test_size: 0.2
   val_size: 0.2
-  model_strategy: rf_threshold
+
+  run_mode: 3
+
+  select_metric: auc
+  candidates: [rf, lr, xgb, cat]
+
+  # base models untuk ensemble
+  ensemble_models: [rf, xgb, cat, lr]
+
+  tune:
+    enabled: true
+    n_trials: 30         # sesuai kebiasaan kamu di M1 8GB
+    timeout_sec: null    # bisa isi misal 1800 (30 menit)
+
+  ensemble_opt:
+    cmaes_trials: 30
+    nsga2_trials: 30
+    timeout_sec: null
+
+  cpu:
+    max_threads: 2
 
 model:
   rf_params:
@@ -40,9 +96,64 @@ model:
     n_jobs: -1
     random_state: 42
 
+  # XGB defaults (used if tuning disabled)
+  xgb_params:
+    n_estimators: 450
+    max_depth: 6
+    learning_rate: 0.08
+    subsample: 0.9
+    colsample_bytree: 0.9
+    reg_lambda: 1.0
+    n_jobs: -1
+    eval_metric: "logloss"
+    random_state: 42
+
+  # CatBoost defaults (used if tuning disabled)
+  cat_params:
+    iterations: 500
+    depth: 6
+    learning_rate: 0.08
+    loss_function: "Logloss"
+    verbose: false
+    random_seed: 42
+
+  # LR defaults (used if tuning disabled)
+  lr_params:
+    C: 1.0
+    solver: "lbfgs"
+    max_iter: 3000
+
+ensemble_optim:
+  enabled: true
+
+  strategies: ["soft_voting", "hill_climbing", "cmaes_optuna", "nsga2_optuna"]
+
+  hill_climbing:
+    iters: 600
+    step: 0.08
+    seed: 42
+
+  cmaes_optuna:
+    enabled: true
+    n_trials: 200
+    timeout_sec: null
+    sampler: "cmaes"      # request: use Optuna sampler
+    seed: 42
+
+  nsga2_optuna:
+    enabled: true
+    n_trials: 250
+    timeout_sec: null
+    sampler: "nsga2"      # request: use Optuna NSGA-II
+    seed: 42
+
+    pick_rule: "max_f1_then_min_cost"  # or "knee_point"
+    max_fp_rate: null
+    max_expected_interventions: null
+
 business:
-  cost_intervention: 15
-  cost_penalty_late: 50
+  cost_intervention: 15.0
+  cost_penalty_late: 50.0
   intervention_success_rate: 1.0
 
 optimization:

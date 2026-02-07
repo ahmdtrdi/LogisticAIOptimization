@@ -155,7 +155,7 @@ def run(cfg: Dict[str, Any], input_path: str) -> Tuple[pd.DataFrame, pd.DataFram
     pred_df.to_csv(pred_path, index=False)
     plan_out.to_csv(plan_path, index=False)
 
-    log.info(f"Saved predictions: {pred_path}")
-    log.info(f"Saved action plan: {plan_path}")
+    log.info(f"[EXPLAIN] Saved predictions: {pred_path}")
+    log.info(f"[EXPLAIN] Saved action plan: {plan_path}")
 
     return pred_df, plan_out

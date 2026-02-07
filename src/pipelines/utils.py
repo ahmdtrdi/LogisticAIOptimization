@@ -34,6 +34,54 @@ def ensure_dir(path: str | os.PathLike) -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
 
+def cleanup_run_artifacts(
+    paths: "Paths",
+    *,
+    remove_models: bool = True,
+    remove_predictions: bool = True,
+    remove_features: bool = False,
+    remove_preprocessed: bool = False,
+    keep: Optional[Iterable[str]] = None,
+) -> None:
+    """
+    Delete old run artifacts to prevent disk from growing.
+    - remove_models: delete models/*.joblib, *.json
+    - remove_predictions: delete data/04-predictions/*
+    - remove_features: delete data/03-features/* (meta/action plan)
+    - remove_preprocessed: delete data/02-preprocessed/* (train_ready)
+    keep: list of filename substrings to keep (safety).
+    """
+    keep = set(keep or [])
+
+    def _safe_rm(p: Path):
+        if not p.exists():
+            return
+        if p.is_file():
+            p.unlink()
+        else:
+            shutil.rmtree(p, ignore_errors=True)
+
+    def _rm_dir_contents(d: Path):
+        if not d.exists():
+            return
+        for item in d.iterdir():
+            name = item.name
+            if any(k in name for k in keep):
+                continue
+            _safe_rm(item)
+
+    if remove_models:
+        _rm_dir_contents(paths.model_dir)
+
+    if remove_predictions:
+        _rm_dir_contents(paths.predictions_dir)
+
+    if remove_features:
+        _rm_dir_contents(paths.features_dir)
+
+    if remove_preprocessed:
+        _rm_dir_contents(paths.preprocessed_dir)
+
 
 def save_json(obj: Dict[str, Any], path: str | os.PathLike) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
