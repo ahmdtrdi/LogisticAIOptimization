@@ -157,7 +157,7 @@ def main():
         st.success("Custom Data Loaded!")
         
     else:
-        demo_path = "data/01-raw/DataCoSupplyChainDataset.csv"
+        demo_path = "data/DataCoSupplyChainDataset.csv"
         
         if os.path.exists(demo_path):
             st.info("ℹ️ Using **Demo Data** (DataCo Supply Chain) for showcase purposes. Upload your own CSV to override.")
