@@ -1,0 +1,11 @@
+andas
+numpy
+scikit-learn
+xgboost
+catboost
+joblib
+optuna
+pyyaml
+tqdm
+streamlit
+plotly
