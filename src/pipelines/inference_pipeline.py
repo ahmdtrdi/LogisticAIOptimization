@@ -42,8 +42,13 @@ def apply_fe_for_inference(df, cfg):
     return df_clean
 
 def align_features(df_input, model):
+    expected_cols = []
+    
     if hasattr(model, "feature_names_in_"):
         expected_cols = model.feature_names_in_
+    elif hasattr(model, "feature_names_"): 
+        expected_cols = model.feature_names_
+    
     else:
         return df_input
 
@@ -51,10 +56,9 @@ def align_features(df_input, model):
     if missing_cols:
         for c in missing_cols:
             df_input[c] = 0 
-
+            
     return df_input[expected_cols].copy()
 
-# --- HELPER: BUSINESS IMPACT REPORT ---
 def generate_business_report(df_result):
     """
     Menghasilkan laporan ROI jika Ground Truth tersedia.
