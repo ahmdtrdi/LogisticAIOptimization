@@ -145,30 +145,29 @@ def main():
 
     # --- 3. LOGIC ---
     df_raw = None
-    if uploaded_file is None:
-        st.warning("👈 Upload CSV to begin.")
-        if st.button("Load Demo Data"):
-             demo_path = "data/01-raw/DataCoSupplyChainDataset.csv"
-             if os.path.exists(demo_path):
-                 df_raw = pd.read_csv(demo_path, encoding='latin-1')
-                 st.success("Demo Data Loaded")
-             else:
-                 st.error("Demo data missing.")
-    else:
+    
+    if uploaded_file is not None:
         df_raw = pd.read_csv(uploaded_file, encoding='latin-1')
-
+        st.success("Custom Data Loaded!")
+        
+    else:
+        demo_path = "data/01-raw/DataCoSupplyChainDataset.csv"
+        
+        if os.path.exists(demo_path):
+            st.info("ℹ️ Using **Demo Data** (DataCo Supply Chain) for showcase purposes. Upload your own CSV to override.")
+            try:
+                df_raw = pd.read_csv(demo_path, encoding='latin-1')
+            except Exception as e:
+                st.error(f"Failed to load demo data: {e}")
+        else:
+            st.warning("👈 Silakan upload file CSV di sidebar untuk memulai.")
+            
     if df_raw is not None:
         col_run, col_dummy = st.columns([1, 4])
-        with col_run:
-            run_btn = st.button("GENERATE INSIGHTS", type="primary")
-        
-        if run_btn:
-            process_simulation(df_raw, cfg, selected_model_file, cost_intervention, cost_penalty)
 
 def process_simulation(df_raw, cfg, model_file, cost_intervention, cost_penalty):
     with st.spinner('Calculating risks and generating insights...'):
         try:
-            # --- PIPELINE ---
             X_new = inference_pipeline.apply_fe_for_inference(df_raw.copy(), cfg)
             model_path = os.path.join("models", model_file)
             artifact = load_model_artifact(model_path)
