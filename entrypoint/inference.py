@@ -1,31 +1,43 @@
 import argparse
 import sys
-from pathlib import Path
+import os
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+# Add root path
+sys.path.append(os.getcwd())
 
-from src.pipelines.utils import load_config, get_logger, resolve_cfg_paths, validate_config  # noqa: E402
-from src.pipelines import inference_pipeline  # noqa: E402
+from src.pipelines.utils import load_config, get_logger
+from src.pipelines import inference_pipeline
 
-log = get_logger("inference")
-
+log = get_logger("entrypoint_inference")
 
 def main():
-    parser = argparse.ArgumentParser(description="Inference pipeline entrypoint")
-    parser.add_argument("--config", required=True, help="Path to config yaml (e.g. config/local.yaml)")
-    parser.add_argument("--input", required=True, help="CSV/Parquet input path for batch prediction")
-    parser.add_argument("--output-dir", default=None, help="Override predictions output directory")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="config/local.yaml", help="Path to config file")
+    parser.add_argument("--input", required=True, help="Path to input CSV file (Raw Data)")
+    parser.add_argument("--model", required=True, help="Path to model .pkl file")
+    parser.add_argument("--output", default=None, help="Path to save predictions")
+    
     args = parser.parse_args()
-
+    
+    # 1. Load Config
     cfg = load_config(args.config)
-    cfg = resolve_cfg_paths(cfg, args.config)
-    validate_config(cfg)
+    
+    # 2. Validate Inputs
+    if not os.path.exists(args.input):
+        log.error(f"Input file not found: {args.input}")
+        return
+        
+    if not os.path.exists(args.model):
+        log.error(f"Model file not found: {args.model}")
+        return
 
-    log.info("Running inference pipeline...")
-    inference_pipeline.run(cfg, input_path=args.input, output_dir=args.output_dir)
-    log.info("Inference completed.")
-
+    # 3. Run Inference
+    inference_pipeline.run(
+        cfg=cfg,
+        input_path=args.input,
+        model_path=args.model,
+        output_path=args.output
+    )
 
 if __name__ == "__main__":
     main()

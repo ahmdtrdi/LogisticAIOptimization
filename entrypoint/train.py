@@ -1,80 +1,76 @@
 import argparse
 import sys
-from pathlib import Path
+import os
+import time
+import pandas as pd
+from datetime import timedelta
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+# Add root path
+sys.path.append(os.getcwd())
 
-from src.pipelines.utils import load_config, get_logger, resolve_cfg_paths, validate_config, Paths, cleanup_run_artifacts  # noqa: E402
-from src.pipelines import feature_eng_pipeline, training_pipeline  # noqa: E402
+from src.pipelines.utils import load_config, get_logger
+from src.pipelines import feature_eng_pipeline, training_pipeline
 
-log = get_logger("train")
-
-
-def _ask_mode_interactive() -> int:
-    print("\nChoose training mode:")
-    print("  1) Single Model (multi->select best->tune best->threshold)")
-    print("  2) Ensemble (tune all->voting/hill/cmaes/nsga2)")
-    print("  3) Both (run 1 then 2)")
-    while True:
-        v = input("Input [1/2/3]: ").strip()
-        if v in {"1", "2", "3"}:
-            return int(v)
-        print("Invalid input. Please type 1, 2, or 3.")
-    
-
+log = get_logger("entrypoint")
 
 def main():
-    parser = argparse.ArgumentParser(description="Train pipeline entrypoint")
-    parser.add_argument("--config", required=True, help="Path to config yaml (e.g. config/local.yaml)")
-    parser.add_argument("--skip-feature-eng", action="store_true", help="Skip feature engineering step")
-    parser.add_argument("--mode", type=int, choices=[1, 2, 3], default=None, help="1=single, 2=ensemble, 3=both")
-
-    # CLEAN FLAGS
-    parser.add_argument("--clean", action="store_true", help="Delete old models + predictions before run")
-    parser.add_argument("--clean-all", action="store_true", help="Delete models + predictions + features + preprocessed")
-
+    # Start Timer
+    start_time = time.time()
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="config/local.yaml", help="Path to config file")
+    parser.add_argument("--mode", type=int, choices=[1, 2], help="1=Single Model, 2=Ensemble")
+    parser.add_argument("--skip-fe", action="store_true", help="Skip Feature Engineering")
     args = parser.parse_args()
-
+    
+    # Load Config
     cfg = load_config(args.config)
-    cfg = resolve_cfg_paths(cfg, args.config)
-    validate_config(cfg)
-
-    # CLEANUP BEFORE RUN
-    if args.clean or args.clean_all:
-        p = Paths.from_cfg(cfg)
-        log.info("[CLEAN] Removing old artifacts...")
-        cleanup_run_artifacts(
-            p,
-            remove_models=True,
-            remove_predictions=True,
-            remove_features=bool(args.clean_all),
-            remove_preprocessed=bool(args.clean_all),
-            keep=[".gitkeep"],
-        )
-        log.info("[CLEAN] Done.")
-
-    mode = args.mode if args.mode is not None else _ask_mode_interactive()
-    cfg.setdefault("train", {})
-    cfg["train"]["run_mode"] = mode
-
-    if not args.skip_feature_eng:
-        log.info("Running feature engineering pipeline...")
+    
+    # Run Feature Engineering
+    if not args.skip_fe:
         feature_eng_pipeline.run(cfg)
     else:
-        log.info("Skipping feature engineering pipeline (using existing preprocessed data).")
+        log.info("Skipping Feature Engineering (Assumed data exists)...")
+        
+    # Load Data
+    train_path = os.path.join(cfg['paths']['features_dir'], cfg['data']['train_ready_parquet'])
+    if not os.path.exists(train_path):
+        log.error("Train data not found! Run without --skip-fe first.")
+        return
 
-    log.info("Running training pipeline...")
-    metrics = training_pipeline.run(cfg)
+    df = pd.read_parquet(train_path)
+    X = df.drop(columns=[cfg['schema']['target']])
+    y = df[cfg['schema']['target']]
+    
+    # Mode Selection
+    mode = args.mode
+    if not mode:
+        print("\n=== SELECT TRAINING MODE ===")
+        print("1) Single Model (Compare -> Select Best -> Tune -> Threshold)")
+        print("2) Ensemble (Train All -> Optimize Weights + Threshold)")
+        try:
+            mode = int(input("Input [1/2]: "))
+        except:
+            mode = 1
+            
+    # Run Pipeline
+    if mode == 1:
+        training_pipeline.run_single_model_flow(cfg, X, y)
+    elif mode == 2:
+        training_pipeline.run_ensemble_flow(cfg, X, y)
 
-    champ = metrics.get("champion", {})
-    log.info(
-        f"Done. Champion={champ.get('name')} | "
-        f"TestAUC={champ.get('test_auc', float('nan')):.4f} | "
-        f"TestAcc={champ.get('test_accuracy', float('nan')):.4f} | "
-        f"Threshold={champ.get('threshold', float('nan')):.4f}"
-    )
+    # End Timer
+    end_time = time.time()
+    elapsed = end_time - start_time
+    duration = str(timedelta(seconds=int(elapsed)))
+    
+    mins, secs = divmod(int(elapsed), 60)
+    time_str = f"{mins} minutes and {secs} seconds"
 
+    print("\n" + "="*50)
+    log.info("PIPELINE EXECUTION COMPLETE")
+    log.info(f"Total duration: {time_str}.")
+    log.info("="*50)
 
 if __name__ == "__main__":
     main()
