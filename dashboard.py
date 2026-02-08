@@ -143,6 +143,12 @@ def main():
     st.markdown("Real-time predictive analytics to minimize late delivery risks and maximize operational ROI.")
     st.divider()
 
+    st.write("Current Directory:", os.getcwd())
+    st.write("Files in root:", os.listdir("."))
+    if os.path.exists("data/01-raw"):
+        st.write("Files in data folder:", os.listdir("data/01-raw"))
+    else:
+        st.error("Folder data/01-raw TIDAK DITEMUKAN!")
     # --- 3. LOGIC ---
     df_raw = None
     
