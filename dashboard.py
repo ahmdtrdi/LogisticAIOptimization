@@ -142,34 +142,40 @@ def main():
     st.title("🚚 Logistics Risk Predictor & Delivery Optimize")
     st.markdown("Real-time predictive analytics to minimize late delivery risks and maximize operational ROI.")
     st.divider()
-
-    st.write("Current Directory:", os.getcwd())
-    st.write("Files in root:", os.listdir("."))
-    if os.path.exists("data/01-raw"):
-        st.write("Files in data folder:", os.listdir("data/01-raw"))
-    else:
-        st.error("Folder data/01-raw TIDAK DITEMUKAN!")
     # --- 3. LOGIC ---
-    df_raw = None
+    possible_paths = [
+        "data/DataCoSupplyChainDataset.csv",
+        "data/01-raw/DataCoSupplyChainDataset.csv"
+    ]
     
-    if uploaded_file is not None:
-        df_raw = pd.read_csv(uploaded_file, encoding='latin-1')
-        st.success("Custom Data Loaded!")
-        
-    else:
-        demo_path = "data/DataCoSupplyChainDataset.csv"
-        
-        if os.path.exists(demo_path):
-            st.info("ℹ️ Using **Demo Data** (DataCo Supply Chain) for showcase purposes. Upload your own CSV to override.")
-            try:
-                df_raw = pd.read_csv(demo_path, encoding='latin-1')
-            except Exception as e:
-                st.error(f"Failed to load demo data: {e}")
-        else:
-            st.warning("👈 Silakan upload file CSV di sidebar untuk memulai.")
+    data_path = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            data_path = p
+            break
             
-    if df_raw is not None:
+    if data_path:
+        # Tampilkan Status Data Ready
+        st.success(f"✅ System Ready. Dataset Loaded: `{os.path.basename(data_path)}`")
+        
+        # Load Data Frame (Hanya baca header dulu biar cepat, full read nanti pas klik tombol)
+        # df_preview = pd.read_csv(data_path, encoding='latin-1', nrows=5)
+        # st.dataframe(df_preview)
+
+        # Tombol Besar untuk Eksekusi
         col_run, col_dummy = st.columns([1, 4])
+        with col_run:
+            run_btn = st.button("🚀 GENERATE INSIGHTS", type="primary")
+        
+        if run_btn:
+            # Baca Full Data saat tombol ditekan
+            df_full = pd.read_csv(data_path, encoding='latin-1')
+            process_simulation(df_full, cfg, selected_model_file, cost_intervention, cost_penalty)
+            
+    else:
+        st.error("**CRITICAL ERROR:** Demo Dataset not found!")
+        st.markdown(f"System looked in: `{possible_paths}`")
+        st.warning("Please ensure `DataCoSupplyChainDataset.csv` is uploaded to the `data/` folder in GitHub.")
 
 def process_simulation(df_raw, cfg, model_file, cost_intervention, cost_penalty):
     with st.spinner('Calculating risks and generating insights...'):
